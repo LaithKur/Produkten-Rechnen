@@ -4,50 +4,8 @@ const productNameInput = document.getElementById('productName');
 const priceInput = document.getElementById('price');
 const searchInput = document.getElementById('searchInput');
 
-// قراءة المنتجات من localStorage بطريقة آمنة
-let products = [];
-const productsData = localStorage.getItem('products');
-if (productsData) {
-  try {
-    products = JSON.parse(productsData);
-  } catch (e) {
-    console.error('خطأ في قراءة بيانات المنتجات من localStorage:', e);
-    products = [];
-  }
-}
-
-let cart = [];
-const cartContainer = document.createElement('div');
-cartContainer.id = 'cart';
-cartContainer.style.position = 'fixed';
-cartContainer.style.top = '50px';
-cartContainer.style.left = '10px';
-cartContainer.style.width = '300px';
-cartContainer.style.maxHeight = '80vh';
-cartContainer.style.overflowY = 'auto';
-cartContainer.style.backgroundColor = '#fff';
-cartContainer.style.border = '1px solid #ccc';
-cartContainer.style.padding = '10px';
-cartContainer.style.display = 'none';
-document.body.appendChild(cartContainer);
-
-const cartButton = document.createElement('button');
-cartButton.textContent = '🛒 السلة';
-cartButton.style.position = 'fixed';
-cartButton.style.top = '10px';
-cartButton.style.left = '10px';
-cartButton.style.padding = '10px 15px';
-cartButton.style.fontSize = '18px';
-document.body.appendChild(cartButton);
-
-cartButton.addEventListener('click', () => {
-  if (cartContainer.style.display === 'none') {
-    renderCart();
-    cartContainer.style.display = 'block';
-  } else {
-    cartContainer.style.display = 'none';
-  }
-});
+let products = JSON.parse(localStorage.getItem('products')) || [];
+let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
 function saveProducts() {
   localStorage.setItem('products', JSON.stringify(products));
@@ -55,63 +13,7 @@ function saveProducts() {
 
 function saveCart() {
   localStorage.setItem('cart', JSON.stringify(cart));
-}
-
-function addProductToCart(index) {
-  const product = products[index];
-  const existingItem = cart.find(item => item.name === product.name);
-  if (existingItem) {
-    existingItem.quantity++;
-  } else {
-    cart.push({ ...product, quantity: 1 });
-  }
-  saveCart();
-  renderCart();
-}
-
-function removeFromCart(index) {
-  cart.splice(index, 1);
-  saveCart();
-  renderCart();
-}
-
-function changeQuantity(index, delta) {
-  cart[index].quantity += delta;
-  if (cart[index].quantity < 1) {
-    removeFromCart(index);
-  } else {
-    saveCart();
-    renderCart();
-  }
-}
-
-function renderCart() {
-  cartContainer.innerHTML = '<h3>سلة المشتريات</h3>';
-  if (cart.length === 0) {
-    cartContainer.innerHTML += '<p>السلة فارغة</p>';
-    return;
-  }
-  cart.forEach((item, index) => {
-    const div = document.createElement('div');
-    div.style.borderBottom = '1px solid #ddd';
-    div.style.padding = '5px 0';
-
-    div.innerHTML = `
-      <strong>${item.name}</strong> - €${item.price.toFixed(2)} x ${item.quantity}
-      = €${(item.price * item.quantity).toFixed(2)}
-      <br/>
-      <button onclick="changeQuantity(${index}, 1)">+</button>
-      <button onclick="changeQuantity(${index}, -1)">-</button>
-      <button onclick="removeFromCart(${index})">حذف</button>
-    `;
-    cartContainer.appendChild(div);
-  });
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const totalDiv = document.createElement('div');
-  totalDiv.style.fontWeight = 'bold';
-  totalDiv.style.marginTop = '10px';
-  totalDiv.textContent = `السعر النهائي: €${total.toFixed(2)}`;
-  cartContainer.appendChild(totalDiv);
+  updateCartDisplay();
 }
 
 async function addProduct() {
@@ -125,26 +27,30 @@ async function addProduct() {
   }
 
   const formData = new FormData();
-  formData.append('image', file);
+  formData.append('file', file);
+  formData.append('upload_preset', 'Produkt'); // إعداد Cloudinary
+  formData.append('folder', 'Produkten'); // مجلد داخل Cloudinary
 
   try {
-    const res = await fetch('/upload', {
+    const res = await fetch('https://api.cloudinary.com/v1_1/dwalfzmb0/image/upload', {
       method: 'POST',
       body: formData
     });
+
     const data = await res.json();
-
-    if (!res.ok) throw new Error(data.message || 'خطأ في رفع الصورة');
-
-    products.push({ name, price, imageUrl: data.imageUrl });
-    saveProducts();
-    renderProducts();
-
-    fileInput.value = '';
-    productNameInput.value = '';
-    priceInput.value = '';
+    if (data.secure_url) {
+      products.push({ name, price, imageUrl: data.secure_url });
+      saveProducts();
+      renderProducts();
+      fileInput.value = '';
+      productNameInput.value = '';
+      priceInput.value = '';
+    } else {
+      alert('فشل رفع الصورة إلى Cloudinary');
+    }
   } catch (err) {
-    alert(err.message);
+    console.error(err);
+    alert('حدث خطأ أثناء رفع الصورة');
   }
 }
 
@@ -165,7 +71,7 @@ function renderProducts() {
         <div class="buttons">
           <button class="small-btn" onclick="deleteProduct(${index})">حذف</button>
           <button class="small-btn" onclick="editPrice(${index})">تغيير السعر</button>
-          <button class="small-btn" onclick="addProductToCart(${index})">أضف إلى السلة</button>
+          <button class="small-btn" onclick="addToCart(${index})">إضافة إلى السلة</button>
         </div>
       `;
 
@@ -195,15 +101,70 @@ function editPrice(index) {
   }
 }
 
-// قراءة العربة من localStorage
-const cartData = localStorage.getItem('cart');
-if (cartData) {
-  try {
-    cart = JSON.parse(cartData);
-  } catch (e) {
-    console.error('خطأ في قراءة العربة من localStorage:', e);
-    cart = [];
+function addToCart(index) {
+  const product = products[index];
+  const cartItem = cart.find(item => item.name === product.name);
+  if (cartItem) {
+    cartItem.quantity++;
+  } else {
+    cart.push({ ...product, quantity: 1 });
   }
+  saveCart();
+  alert(`تمت إضافة ${product.name} إلى السلة`);
+}
+
+function removeFromCart(index) {
+  cart.splice(index, 1);
+  saveCart();
+}
+
+function increaseQuantity(index) {
+  cart[index].quantity++;
+  saveCart();
+}
+
+function decreaseQuantity(index) {
+  if (cart[index].quantity > 1) {
+    cart[index].quantity--;
+  } else {
+    cart.splice(index, 1);
+  }
+  saveCart();
+}
+
+function updateCartDisplay() {
+  const cartItems = document.getElementById('cart-items');
+  const cartCount = document.getElementById('cart-count');
+  const totalPriceEl = document.getElementById('total-price');
+
+  if (!cartItems || !cartCount || !totalPriceEl) return;
+
+  cartItems.innerHTML = '';
+  let total = 0;
+  let totalQuantity = 0;
+
+  cart.forEach((item, i) => {
+    const p = document.createElement('p');
+    p.innerHTML = `
+      ${item.name} - €${item.price.toFixed(2)} × ${item.quantity} = €${(item.price * item.quantity).toFixed(2)}
+      <button onclick="removeFromCart(${i})">❌</button>
+      <button onclick="increaseQuantity(${i})">＋</button>
+      <button onclick="decreaseQuantity(${i})">－</button>
+    `;
+    cartItems.appendChild(p);
+    total += item.price * item.quantity;
+    totalQuantity += item.quantity;
+  });
+
+  totalPriceEl.textContent = `السعر النهائي: €${total.toFixed(2)}`;
+  cartCount.textContent = totalQuantity;
+}
+
+function toggleCart() {
+  const cartDiv = document.getElementById('cart');
+  if (!cartDiv) return;
+  cartDiv.style.display = cartDiv.style.display === 'block' ? 'none' : 'block';
 }
 
 renderProducts();
+updateCartDisplay();
