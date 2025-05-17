@@ -17,6 +17,7 @@ const priceInput = document.getElementById('price');
 const searchInput = document.getElementById('searchInput');  
   
 let products = [];  
+let productsDocs = [];  // لتخزين معرفات المستندات في Firestore  
 let cart = JSON.parse(localStorage.getItem('cart')) || [];  
   
 function saveCart() {  
@@ -63,8 +64,8 @@ async function addProduct() {
 function renderProducts() {  
   const searchTerm = searchInput.value.trim().toLowerCase();  
   container.innerHTML = '';  
-  products
-    .filter(p => typeof p.name === 'string' && p.name.toLowerCase().includes(searchTerm))  
+  products  
+    .filter(p => p.name.toLowerCase().includes(searchTerm))  
     .forEach((product, index) => {  
       const div = document.createElement('div');  
       div.className = 'product';  
@@ -74,8 +75,9 @@ function renderProducts() {
         <p>السعر: €${product.price.toFixed(2)}</p>  
         <div class="buttons">  
           <button class="small-btn" onclick="addToCart(${index})">إضافة إلى السلة</button>  
-          <button class="small-btn" onclick="editProductPrompt(${index})">تعديل</button>  
-          <button class="small-btn" onclick="deleteProduct(${index})">حذف</button>  
+          <button class="small-btn" onclick="editProductName(${index})">تعديل الاسم</button>  
+          <button class="small-btn" onclick="editProductPrice(${index})">تعديل السعر</button>  
+          <button class="small-btn" onclick="deleteProduct(${index})">حذف المنتج</button>  
         </div>  
       `;  
       container.appendChild(div);  
@@ -140,46 +142,71 @@ function toggleCart() {
   
 async function loadProducts() {  
   const snapshot = await db.collection('products').get();  
-  products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));  
+  products = [];  
+  productsDocs = [];  
+  snapshot.docs.forEach(doc => {  
+    products.push(doc.data());  
+    productsDocs.push(doc.id);  
+  });  
   renderProducts();  
 }  
-
-async function updateProductInDB(productId, updatedData) {
-  try {
-    await db.collection('products').doc(productId).update(updatedData);
-    await loadProducts();
-  } catch (error) {
-    console.error('خطأ في تحديث المنتج:', error);
-    alert('حدث خطأ أثناء تحديث المنتج.');
-  }
-}
-
-async function deleteProduct(index) {
-  try {
-    const productId = products[index].id;
-    await db.collection('products').doc(productId).delete();
-    await loadProducts();
-    alert('تم حذف المنتج بنجاح.');
-  } catch (error) {
-    console.error('خطأ في حذف المنتج:', error);
-    alert('حدث خطأ أثناء حذف المنتج.');
-  }
-}
-
-function editProductPrompt(index) {
-  const product = products[index];
-  const newName = prompt('أدخل اسم المنتج الجديد:', product.name);
-  if (newName === null) return;
-  const newPriceStr = prompt('أدخل السعر الجديد:', product.price);
-  if (newPriceStr === null) return;
-  const newPrice = parseFloat(newPriceStr);
-  if (!newName.trim() || isNaN(newPrice) || newPrice <= 0) {
-    alert('الرجاء إدخال اسم صحيح وسعر صالح.');
-    return;
-  }
-
-  updateProductInDB(product.id, { name: newName.trim(), price: newPrice });
-}
-
+  
+// دوال الحذف والتعديل:  
+  
+async function deleteProduct(index) {  
+  const docId = productsDocs[index];  
+  if (!docId) return;  
+  const productName = products[index].name;  
+  await db.collection('products').doc(docId).delete();  
+  alert('تم حذف المنتج');  
+  loadProducts();  
+  // حذف المنتج من السلة  
+  cart = cart.filter(item => item.name !== productName);  
+  saveCart();  
+}  
+  
+async function editProductName(index) {  
+  const docId = productsDocs[index];  
+  if (!docId) return;  
+  const oldName = products[index].name;  
+  const newName = prompt('أدخل الاسم الجديد للمنتج:', oldName);  
+  if (newName && newName.trim() !== '') {  
+    await db.collection('products').doc(docId).update({ name: newName.trim() });  
+    alert('تم تعديل الاسم بنجاح');  
+    loadProducts();  
+    // تحديث الاسم في السلة  
+    cart.forEach(item => {  
+      if (item.name === oldName) {  
+        item.name = newName.trim();  
+      }  
+    });  
+    saveCart();  
+  }  
+}  
+  
+async function editProductPrice(index) {  
+  const docId = productsDocs[index];  
+  if (!docId) return;  
+  const oldPrice = products[index].price;  
+  let newPriceStr = prompt('أدخل السعر الجديد للمنتج:', oldPrice);  
+  if (newPriceStr === null) return; // إلغاء  
+  let newPrice = parseFloat(newPriceStr);  
+  if (!isNaN(newPrice) && newPrice > 0) {  
+    await db.collection('products').doc(docId).update({ price: newPrice });  
+    alert('تم تعديل السعر بنجاح');  
+    loadProducts();  
+    // تحديث السعر في السلة  
+    cart.forEach(item => {  
+      if (item.name === products[index].name && item.price === oldPrice) {  
+        item.price = newPrice;  
+      }  
+    });  
+    saveCart();  
+  } else {  
+    alert('الرجاء إدخال سعر صالح أكبر من صفر');  
+  }  
+}  
+  
+// التحميل الأولي  
 loadProducts();  
 updateCartDisplay();
