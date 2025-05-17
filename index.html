@@ -3,22 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Produkten مع Firebase</title>
+  <title>Produkten</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="cart-icon" style="position: fixed; top: 10px; left: 10px; cursor: pointer; font-size: 24px; user-select: none;" onclick="toggleCart()">
-    🛒 <span id="cart-count" style="background:red;color:white;border-radius:50%;padding:2px 6px; font-size:14px;">0</span>
+  <div id="cart-icon" style="position: fixed; top: 10px; left: 10px; cursor: pointer;" onclick="toggleCart()">
+    🛒 <span id="cart-count" style="background:red;color:white;border-radius:50%;padding:2px 6px;">0</span>
   </div>
 
-  <div id="cart" style="display:none; position: fixed; top: 50px; left: 10px; background: white; border: 1px solid #ccc; padding: 10px; width: 320px; max-height: 400px; overflow-y: auto; box-shadow: 0 0 10px rgba(0,0,0,0.2); z-index:100;">
+  <div id="cart" style="display:none; position: fixed; top: 50px; left: 10px; background: white; padding: 10px; width: 300px;">
     <h3>سلة التسوق</h3>
     <div id="cart-items"></div>
     <p id="total-price">السعر النهائي: €0.00</p>
   </div>
 
   <h1>المنتجات</h1>
-
   <div class="form">
     <input type="file" id="file" accept="image/*" />
     <input type="text" id="productName" placeholder="اسم المنتج" />
@@ -27,14 +26,10 @@
   </div>
 
   <input type="text" id="searchInput" placeholder="ابحث باسم المنتج" oninput="renderProducts()" />
-
   <div id="container-2" class="products-container"></div>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-
-  <script src=".js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
