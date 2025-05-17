@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Produkten</title>
+  <title>Produkten مع Firebase</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="cart-icon" style="position: fixed; top: 10px; left: 10px; cursor: pointer; font-size: 24px;" onclick="toggleCart()">
+  <div id="cart-icon" style="position: fixed; top: 10px; left: 10px; cursor: pointer; font-size: 24px; user-select: none;" onclick="toggleCart()">
     🛒 <span id="cart-count" style="background:red;color:white;border-radius:50%;padding:2px 6px; font-size:14px;">0</span>
   </div>
 
@@ -30,6 +30,11 @@
 
   <div id="container-2" class="products-container"></div>
 
-  <script src="script.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script src=".js"></script>
 </body>
 </html>
