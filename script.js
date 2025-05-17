@@ -74,6 +74,8 @@ function renderProducts() {
         <p>السعر: €${product.price.toFixed(2)}</p>  
         <div class="buttons">  
           <button class="small-btn" onclick="addToCart(${index})">إضافة إلى السلة</button>  
+          <button class="small-btn" onclick="editProductPrompt(${index})">تعديل</button>  
+          <button class="small-btn" onclick="deleteProduct(${index})">حذف</button>  
         </div>  
       `;  
       container.appendChild(div);  
@@ -118,12 +120,10 @@ function removeFromCart(index) {
   cart.splice(index, 1);  
   saveCart();  
 }  
-  
 function increaseQuantity(index) {  
   cart[index].quantity++;  
   saveCart();  
 }  
-  
 function decreaseQuantity(index) {  
   if (cart[index].quantity > 1) {  
     cart[index].quantity--;  
@@ -132,7 +132,6 @@ function decreaseQuantity(index) {
   }  
   saveCart();  
 }  
-  
 function toggleCart() {  
   const cartDiv = document.getElementById('cart');  
   if (!cartDiv) return;  
@@ -141,11 +140,46 @@ function toggleCart() {
   
 async function loadProducts() {  
   const snapshot = await db.collection('products').get();  
-  products = snapshot.docs
-    .map(doc => doc.data())
-    .filter(p => p.name && p.price && p.imageUrl);  // تأكد من وجود الحقول الضرورية
+  products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));  
   renderProducts();  
 }  
-  
+
+async function updateProductInDB(productId, updatedData) {
+  try {
+    await db.collection('products').doc(productId).update(updatedData);
+    await loadProducts();
+  } catch (error) {
+    console.error('خطأ في تحديث المنتج:', error);
+    alert('حدث خطأ أثناء تحديث المنتج.');
+  }
+}
+
+async function deleteProduct(index) {
+  try {
+    const productId = products[index].id;
+    await db.collection('products').doc(productId).delete();
+    await loadProducts();
+    alert('تم حذف المنتج بنجاح.');
+  } catch (error) {
+    console.error('خطأ في حذف المنتج:', error);
+    alert('حدث خطأ أثناء حذف المنتج.');
+  }
+}
+
+function editProductPrompt(index) {
+  const product = products[index];
+  const newName = prompt('أدخل اسم المنتج الجديد:', product.name);
+  if (newName === null) return;
+  const newPriceStr = prompt('أدخل السعر الجديد:', product.price);
+  if (newPriceStr === null) return;
+  const newPrice = parseFloat(newPriceStr);
+  if (!newName.trim() || isNaN(newPrice) || newPrice <= 0) {
+    alert('الرجاء إدخال اسم صحيح وسعر صالح.');
+    return;
+  }
+
+  updateProductInDB(product.id, { name: newName.trim(), price: newPrice });
+}
+
 loadProducts();  
 updateCartDisplay();
